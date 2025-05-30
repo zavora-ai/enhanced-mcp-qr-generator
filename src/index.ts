@@ -26,14 +26,14 @@ export function startServer(config: ServerConfig) {
   console.error(`  Default Colors: ${config.defaultColor} / ${config.defaultBackgroundColor}`);
   console.error(`  Max QR Code Size: ${config.maxQRCodeSize}px`);
   console.error(`  Max Logo Size: ${config.maxLogoSize} bytes`);
-  
+
   // Create and start MCP server
   const server = new McpServer(config);
-  server.start().catch((error) => {
+  server.start().catch(error => {
     console.error('Server failed to start:', error);
     process.exit(1);
   });
-  
+
   // Create health check server
   const healthServer = http.createServer((req, res) => {
     if (req.url === '/health') {
@@ -43,7 +43,7 @@ export function startServer(config: ServerConfig) {
       res.end('Not found');
     }
   });
-  
+
   // Start health check server
   healthServer.listen(3000, () => {
     console.error('Health check endpoint available at http://localhost:3000/health');
@@ -58,10 +58,10 @@ export * from './types';
 if (require.main === module) {
   // Parse command line arguments
   const args = parseCommandLineArgs(process.argv.slice(2));
-  
+
   // Load configuration
   const config = loadConfig(args);
-  
+
   // Start server
   startServer(config);
 }
