@@ -4,6 +4,8 @@ A powerful and flexible MCP (Model Context Protocol) server for generating QR co
 
 Developed by [James Karanja](https://www.zavora.ai) at Zavora AI.
 
+[![CI/CD Pipeline](https://github.com/zavora-ai/enhanced-mcp-qr-generator/actions/workflows/ci.yml/badge.svg)](https://github.com/zavora-ai/enhanced-mcp-qr-generator/actions/workflows/ci.yml)
+
 ## Features
 
 - **QR Code Generation**: Create QR codes from any text or URL
