@@ -15,7 +15,9 @@ import { healthHandler } from './health';
  */
 export function startServer(config: ServerConfig) {
   // Log startup information
-  console.error(`Enhanced MCP QR Generator v${process.env.npm_package_version || '1.0.0'} starting...`);
+  console.error(
+    `Enhanced MCP QR Generator v${process.env.npm_package_version || '1.0.0'} starting...`
+  );
   console.error(`Configuration:`);
   console.error(`  Default Error Correction Level: ${config.defaultErrorCorrectionLevel}`);
   console.error(`  Default Format: ${config.defaultFormat}`);
@@ -28,7 +30,7 @@ export function startServer(config: ServerConfig) {
   // Create and start MCP server
   const server = new McpServer(config);
   server.start().catch((error) => {
-    console.error("Server failed to start:", error);
+    console.error('Server failed to start:', error);
     process.exit(1);
   });
   

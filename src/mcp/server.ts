@@ -5,10 +5,12 @@
 // Mock MCP SDK for development
 // In a real implementation, this would be imported from '@modelcontextprotocol/sdk'
 interface MCPToolCall {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   parameters: Record<string, any>;
 }
 
 interface MCPToolResult {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   result?: any;
   error?: string;
 }
@@ -16,6 +18,7 @@ interface MCPToolResult {
 interface MCPTool {
   name: string;
   description: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   inputSchema: any;
   handler: (toolCall: MCPToolCall) => Promise<MCPToolResult>;
 }
@@ -184,7 +187,17 @@ export class McpServer {
    */
   private async handleGenerateQR(toolCall: MCPToolCall): Promise<MCPToolResult> {
     try {
-      const { text, errorCorrectionLevel, format, size, margin, color, backgroundColor, logo, logoSize } = toolCall.parameters;
+      const {
+        text,
+        errorCorrectionLevel,
+        format,
+        size,
+        margin,
+        color,
+        backgroundColor,
+        logo,
+        logoSize
+      } = toolCall.parameters;
 
       // Generate QR code
       const qrResult = await generateQR(

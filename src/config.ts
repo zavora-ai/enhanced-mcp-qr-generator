@@ -128,7 +128,7 @@ export function loadConfig(args?: CommandLineArgs): ServerConfig {
   if (process.env.ENABLE_LOGGING) 
     config.enableLogging = process.env.ENABLE_LOGGING === 'true';
   if (process.env.LOG_LEVEL) 
-    config.logLevel = process.env.LOG_LEVEL as any;
+    config.logLevel = process.env.LOG_LEVEL as 'debug' | 'info' | 'warn' | 'error';
   if (process.env.CACHE_ENABLED) 
     config.cacheEnabled = process.env.CACHE_ENABLED === 'true';
   if (process.env.CACHE_TTL) 

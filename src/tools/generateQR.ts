@@ -192,7 +192,10 @@ async function addLogoToQR(
  * @param logo Logo options
  * @returns SVG with logo
  */
-async function addLogoToSvg(svgData: string, logo: { image: string; size?: number }): Promise<string> {
+async function addLogoToSvg(
+  svgData: string,
+  logo: { image: string; size?: number }
+): Promise<string> {
   // Extract viewBox dimensions
   const viewBoxMatch = svgData.match(/viewBox="0 0 (\d+) (\d+)"/);
   if (!viewBoxMatch) {
@@ -203,7 +206,9 @@ async function addLogoToSvg(svgData: string, logo: { image: string; size?: numbe
   const height = parseInt(viewBoxMatch[2]);
 
   // Calculate logo size and position
-  const logoSize = logo.size ? (logo.size / 100) * Math.min(width, height) : Math.min(width, height) * 0.2;
+  const logoSize = logo.size
+    ? (logo.size / 100) * Math.min(width, height)
+    : Math.min(width, height) * 0.2;
   const logoX = (width - logoSize) / 2;
   const logoY = (height - logoSize) / 2;
 
@@ -249,7 +254,9 @@ async function addLogoToPng(
   const qrHeight = qrMetadata.height || 300;
 
   // Resize logo
-  const logoSize = logo.size ? (logo.size / 100) * Math.min(qrWidth, qrHeight) : Math.min(qrWidth, qrHeight) * 0.2;
+  const logoSize = logo.size
+    ? (logo.size / 100) * Math.min(qrWidth, qrHeight)
+    : Math.min(qrWidth, qrHeight) * 0.2;
   const resizedLogo = await sharp(logoBuffer)
     .resize(Math.round(logoSize), Math.round(logoSize), {
       fit: 'contain',
@@ -389,7 +396,10 @@ export async function generateQRWithUniqueFilename(
   config: ServerConfig = defaultConfig
 ): Promise<string> {
   // Generate a unique filename based on text and options
-  const hash = crypto.createHash('md5').update(text + JSON.stringify(options)).digest('hex');
+  const hash = crypto
+    .createHash('md5')
+    .update(text + JSON.stringify(options))
+    .digest('hex');
   const format = options.format || config.defaultFormat;
   const extension = format === 'svg' ? 'svg' : format === 'png' ? 'png' : 'txt';
   const filename = `qr-${hash}.${extension}`;
