@@ -1,0 +1,30 @@
+version: '3'
+
+services:
+  qr-generator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: zavorai/enhanced-mcp-qr-generator:latest
+    container_name: enhanced-mcp-qr-generator
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DEFAULT_ERROR_CORRECTION_LEVEL=M
+      - DEFAULT_FORMAT=png
+      - DEFAULT_SIZE=300
+      - DEFAULT_MARGIN=4
+      - DEFAULT_COLOR=#000000
+      - DEFAULT_BACKGROUND_COLOR=#ffffff
+      - MAX_QR_CODE_SIZE=1000
+      - MAX_LOGO_SIZE=1048576
+    volumes:
+      - ./output:/app/output
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s

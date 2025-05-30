@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "qr-generator": {
+      "command": "node",
+      "args": ["../dist/index.js"]
+    }
+  }
+}
