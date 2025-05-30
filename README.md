@@ -215,6 +215,64 @@ Saves a QR code to a file.
 
 Returns the path to the saved file.
 
+## MCP Protocol Implementation
+
+This project implements the Model Context Protocol (MCP) specification, providing a standardized way for AI assistants to generate QR codes. The implementation follows the JSON-RPC 2.0 format required by MCP.
+
+### Tool Specifications
+
+The MCP server provides two tools:
+
+1. **generate_qr**: Generates a QR code and returns it in the specified format
+   - Input: Text/URL, format options, styling options
+   - Output: QR code data with metadata
+
+2. **save_qr**: Generates a QR code and saves it to a file
+   - Input: Text/URL, output path, format options, styling options
+   - Output: File path and metadata
+
+### JSON-RPC Format
+
+All requests and responses follow the JSON-RPC 2.0 format:
+
+```json
+// Example request
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "generate_qr",
+    "arguments": {
+      "text": "https://example.com",
+      "format": "png",
+      "size": 300
+    }
+  }
+}
+
+// Example response
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "content": [
+      {
+        "type": "image",
+        "data": "base64-encoded-data",
+        "mimeType": "image/png"
+      }
+    ],
+    "structuredContent": {
+      "format": "png",
+      "size": 300,
+      "content": "https://example.com",
+      "timestamp": "2025-05-30T21:00:00Z"
+    }
+  }
+}
+```
+
 ## Development
 
 ### Prerequisites
@@ -233,6 +291,24 @@ npm run build
 
 # Run tests
 npm test
+```
+
+### Testing
+
+The project includes both unit tests and integration tests:
+
+```bash
+# Run all tests
+npm test
+
+# Run only unit tests
+npm run test:unit
+
+# Run only integration tests
+npm run test:integration
+
+# Run tests with coverage
+npm run test:coverage
 ```
 
 ## License

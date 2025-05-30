@@ -1,19 +1,6 @@
 /**
  * MCP Server implementation for QR code generation
  */
-interface MCPToolCall {
-    parameters: Record<string, any>;
-}
-interface MCPToolResult {
-    result?: any;
-    error?: string;
-}
-interface MCPTool {
-    name: string;
-    description: string;
-    inputSchema: any;
-    handler: (toolCall: MCPToolCall) => Promise<MCPToolResult>;
-}
 import { ServerConfig } from '../config';
 /**
  * MCP Server for QR code generation
@@ -21,6 +8,7 @@ import { ServerConfig } from '../config';
 export declare class McpServer {
     private server;
     private config;
+    private httpServer;
     /**
      * Create a new MCP Server
      * @param config Server configuration
@@ -50,10 +38,4 @@ export declare class McpServer {
      * Stop the MCP server
      */
     stop(): Promise<void>;
-    /**
-     * Get all registered tools
-     * @returns List of tools
-     */
-    getTools(): MCPTool[];
 }
-export {};

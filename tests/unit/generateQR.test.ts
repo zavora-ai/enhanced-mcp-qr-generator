@@ -2,9 +2,9 @@
  * Unit tests for QR code generation tool
  */
 
-import { generateQR } from '../src/tools/generateQR';
-import { QRCodeOptions } from '../src/types';
-import { ServerConfig } from '../src/config';
+import { generateQR } from '../../src/tools/generateQR';
+import { QRCodeOptions } from '../../src/types';
+import { ServerConfig } from '../../src/config';
 
 // Mock QRCode library
 jest.mock('qrcode', () => ({

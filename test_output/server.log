@@ -1,0 +1,14 @@
+Enhanced MCP QR Generator v1.0.0 starting...
+Configuration:
+  Default Error Correction Level: M
+  Default Format: png
+  Default Size: 300px
+  Default Margin: 4
+  Default Colors: #000000 / #ffffff
+  Max QR Code Size: 1000px
+  Max Logo Size: 1048576 bytes
+MCP Server started
+Health check endpoint available at http://localhost:3000/health
+MCP Server started on http://localhost:3333
+Received SIGTERM. Shutting down...
+MCP Server stopped

@@ -48,6 +48,21 @@ export function startServer(config: ServerConfig) {
   healthServer.listen(3000, () => {
     console.error('Health check endpoint available at http://localhost:3000/health');
   });
+
+  // Handle process termination
+  process.on('SIGINT', async () => {
+    console.error('Received SIGINT. Shutting down...');
+    await server.stop();
+    healthServer.close();
+    process.exit(0);
+  });
+
+  process.on('SIGTERM', async () => {
+    console.error('Received SIGTERM. Shutting down...');
+    await server.stop();
+    healthServer.close();
+    process.exit(0);
+  });
 }
 
 // Export all tools and utilities

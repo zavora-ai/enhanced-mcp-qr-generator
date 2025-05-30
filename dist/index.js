@@ -43,8 +43,8 @@ function startServer(config) {
     console.error(`  Max Logo Size: ${config.maxLogoSize} bytes`);
     // Create and start MCP server
     const server = new server_1.McpServer(config);
-    server.start().catch((error) => {
-        console.error("Server failed to start:", error);
+    server.start().catch(error => {
+        console.error('Server failed to start:', error);
         process.exit(1);
     });
     // Create health check server
@@ -60,6 +60,19 @@ function startServer(config) {
     // Start health check server
     healthServer.listen(3000, () => {
         console.error('Health check endpoint available at http://localhost:3000/health');
+    });
+    // Handle process termination
+    process.on('SIGINT', async () => {
+        console.error('Received SIGINT. Shutting down...');
+        await server.stop();
+        healthServer.close();
+        process.exit(0);
+    });
+    process.on('SIGTERM', async () => {
+        console.error('Received SIGTERM. Shutting down...');
+        await server.stop();
+        healthServer.close();
+        process.exit(0);
     });
 }
 exports.startServer = startServer;

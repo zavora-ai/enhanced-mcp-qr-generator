@@ -45,10 +45,96 @@ class MCPServer {
     getTools() {
         return this.tools;
     }
+    async handleRequest(requestBody) {
+        try {
+            const request = JSON.parse(requestBody);
+            // Check if it's a valid JSON-RPC 2.0 request
+            if (request.jsonrpc !== '2.0' || !request.method || request.id === undefined) {
+                return JSON.stringify({
+                    jsonrpc: '2.0',
+                    id: request.id || null,
+                    error: {
+                        code: -32600,
+                        message: 'Invalid Request'
+                    }
+                });
+            }
+            // Handle tools/call method
+            if (request.method === 'tools/call') {
+                const { name, arguments: args } = request.params;
+                // Find the tool
+                const tool = this.tools.find(t => t.name === name);
+                if (!tool) {
+                    return JSON.stringify({
+                        jsonrpc: '2.0',
+                        id: request.id,
+                        error: {
+                            code: -32601,
+                            message: `Tool not found: ${name}`
+                        }
+                    });
+                }
+                // Call the tool
+                const result = await tool.handler({ parameters: args });
+                // Return the result
+                if (result.error) {
+                    return JSON.stringify({
+                        jsonrpc: '2.0',
+                        id: request.id,
+                        error: {
+                            code: -32000,
+                            message: result.error
+                        }
+                    });
+                }
+                else {
+                    return JSON.stringify({
+                        jsonrpc: '2.0',
+                        id: request.id,
+                        result: result.result
+                    });
+                }
+            }
+            // Handle tools/list method
+            if (request.method === 'tools/list') {
+                return JSON.stringify({
+                    jsonrpc: '2.0',
+                    id: request.id,
+                    result: {
+                        tools: this.tools.map(tool => ({
+                            name: tool.name,
+                            description: tool.description,
+                            inputSchema: tool.inputSchema
+                        }))
+                    }
+                });
+            }
+            // Method not found
+            return JSON.stringify({
+                jsonrpc: '2.0',
+                id: request.id,
+                error: {
+                    code: -32601,
+                    message: `Method not found: ${request.method}`
+                }
+            });
+        }
+        catch (error) {
+            return JSON.stringify({
+                jsonrpc: '2.0',
+                id: null,
+                error: {
+                    code: -32700,
+                    message: 'Parse error'
+                }
+            });
+        }
+    }
 }
 const generateQR_1 = require("../tools/generateQR");
 const os = __importStar(require("os"));
 const path = __importStar(require("path"));
+const http = __importStar(require("http"));
 /**
  * MCP Server for QR code generation
  */
@@ -58,6 +144,7 @@ class McpServer {
      * @param config Server configuration
      */
     constructor(config) {
+        this.httpServer = null;
         this.config = config;
         this.server = new MCPServer();
         // Register tools
@@ -190,11 +277,42 @@ class McpServer {
                 backgroundColor,
                 logo: logo ? { image: logo, size: logoSize } : undefined
             }, this.config);
+            // Format the result based on the QR code format
+            let content = [];
+            if (qrResult.format === 'terminal' || qrResult.format === 'base64') {
+                // For terminal or base64 format, return as text
+                content = [
+                    {
+                        type: 'text',
+                        text: qrResult.data
+                    }
+                ];
+            }
+            else {
+                // For PNG or SVG, return as image with proper MIME type
+                content = [
+                    {
+                        type: 'image',
+                        data: qrResult.data.replace(/^data:image\/[^;]+;base64,/, ''),
+                        mimeType: qrResult.mimeType
+                    }
+                ];
+            }
+            // Return the result
             return {
-                result: qrResult
+                result: {
+                    content,
+                    structuredContent: {
+                        format: qrResult.format,
+                        size: qrResult.size,
+                        content: qrResult.content,
+                        timestamp: qrResult.timestamp
+                    }
+                }
             };
         }
         catch (error) {
+            console.error('Error generating QR code:', error);
             return {
                 error: error.message
             };
@@ -227,9 +345,17 @@ class McpServer {
             const savedPath = await (0, generateQR_1.saveQRToFile)(qrResult, resolvedPath);
             return {
                 result: {
-                    path: savedPath,
-                    format: qrResult.format,
-                    size: qrResult.size
+                    content: [
+                        {
+                            type: 'text',
+                            text: `QR code saved to ${savedPath}`
+                        }
+                    ],
+                    structuredContent: {
+                        path: savedPath,
+                        format: qrResult.format,
+                        size: qrResult.size
+                    }
                 }
             };
         }
@@ -243,22 +369,77 @@ class McpServer {
      * Start the MCP server
      */
     async start() {
-        await this.server.start();
-        console.error(`Enhanced MCP QR Generator started`);
+        try {
+            // Create HTTP server to handle requests
+            this.httpServer = http.createServer(async (req, res) => {
+                if (req.method === 'POST') {
+                    let body = '';
+                    req.on('data', chunk => {
+                        body += chunk.toString();
+                    });
+                    req.on('end', async () => {
+                        try {
+                            // Process the request using MCP server
+                            const response = await this.server.handleRequest(body);
+                            // Send the response
+                            res.writeHead(200, { 'Content-Type': 'application/json' });
+                            res.end(response);
+                        }
+                        catch (error) {
+                            console.error('Error processing request:', error);
+                            res.writeHead(500, { 'Content-Type': 'application/json' });
+                            res.end(JSON.stringify({
+                                jsonrpc: '2.0',
+                                id: null,
+                                error: {
+                                    code: -32603,
+                                    message: 'Internal server error'
+                                }
+                            }));
+                        }
+                    });
+                }
+                else {
+                    res.writeHead(405, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({
+                        jsonrpc: '2.0',
+                        id: null,
+                        error: {
+                            code: -32600,
+                            message: 'Method not allowed'
+                        }
+                    }));
+                }
+            });
+            // Start the HTTP server
+            this.httpServer.listen(this.config.port, this.config.host, () => {
+                console.error(`MCP Server started on http://${this.config.host}:${this.config.port}`);
+            });
+            // Start the MCP server
+            await this.server.start();
+        }
+        catch (error) {
+            console.error('Failed to start MCP server:', error);
+            throw error;
+        }
     }
     /**
      * Stop the MCP server
      */
     async stop() {
-        await this.server.stop();
-        console.error('Enhanced MCP QR Generator stopped');
-    }
-    /**
-     * Get all registered tools
-     * @returns List of tools
-     */
-    getTools() {
-        return this.server.getTools();
+        try {
+            // Stop the MCP server
+            await this.server.stop();
+            // Close the HTTP server if it exists
+            if (this.httpServer) {
+                this.httpServer.close();
+                this.httpServer = null;
+            }
+        }
+        catch (error) {
+            console.error('Failed to stop MCP server:', error);
+            throw error;
+        }
     }
 }
 exports.McpServer = McpServer;

@@ -205,7 +205,9 @@ async function addLogoToSvg(svgData, logo) {
     const width = parseInt(viewBoxMatch[1]);
     const height = parseInt(viewBoxMatch[2]);
     // Calculate logo size and position
-    const logoSize = logo.size ? (logo.size / 100) * Math.min(width, height) : Math.min(width, height) * 0.2;
+    const logoSize = logo.size
+        ? (logo.size / 100) * Math.min(width, height)
+        : Math.min(width, height) * 0.2;
     const logoX = (width - logoSize) / 2;
     const logoY = (height - logoSize) / 2;
     // Insert logo image before closing svg tag
@@ -244,7 +246,9 @@ async function addLogoToPng(pngData, logo, config) {
     const qrWidth = qrMetadata.width || 300;
     const qrHeight = qrMetadata.height || 300;
     // Resize logo
-    const logoSize = logo.size ? (logo.size / 100) * Math.min(qrWidth, qrHeight) : Math.min(qrWidth, qrHeight) * 0.2;
+    const logoSize = logo.size
+        ? (logo.size / 100) * Math.min(qrWidth, qrHeight)
+        : Math.min(qrWidth, qrHeight) * 0.2;
     const resizedLogo = await (0, sharp_1.default)(logoBuffer)
         .resize(Math.round(logoSize), Math.round(logoSize), {
         fit: 'contain',
@@ -364,7 +368,10 @@ exports.generateAndSaveQR = generateAndSaveQR;
  */
 async function generateQRWithUniqueFilename(text, directory, options = {}, config = config_1.defaultConfig) {
     // Generate a unique filename based on text and options
-    const hash = crypto.createHash('md5').update(text + JSON.stringify(options)).digest('hex');
+    const hash = crypto
+        .createHash('md5')
+        .update(text + JSON.stringify(options))
+        .digest('hex');
     const format = options.format || config.defaultFormat;
     const extension = format === 'svg' ? 'svg' : format === 'png' ? 'png' : 'txt';
     const filename = `qr-${hash}.${extension}`;
