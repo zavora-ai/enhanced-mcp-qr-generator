@@ -100,22 +100,22 @@ describe('MCP QR Generator Integration Tests', () => {
     expect(response.result).toBeDefined();
     expect(response.result.content).toBeDefined();
     expect(Array.isArray(response.result.content)).toBe(true);
-
+    
     // Check if we have an image in the response
     const imageContent = response.result.content.find(
-      (item: Record<string, unknown>) => item.type === 'image'
+      item => item.type === 'image'
     );
-
+    
     if (imageContent) {
       // Extract and save the image
       const imageData = imageContent.data;
       const buffer = Buffer.from(imageData as string, 'base64');
       await writeFile(qrImagePath, buffer);
-
+      
       // Verify the image was saved
       const fileExists = await exists(qrImagePath);
       expect(fileExists).toBe(true);
-
+      
       // Check file size (should be non-zero)
       const stats = fs.statSync(qrImagePath);
       expect(stats.size).toBeGreaterThan(0);

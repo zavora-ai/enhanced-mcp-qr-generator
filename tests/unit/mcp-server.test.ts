@@ -49,8 +49,8 @@ jest.mock('../../src/tools/generateQR', () => ({
 }));
 
 describe('MCP Server', () => {
-  let server: McpServer;
-  let config: ServerConfig;
+  let server;
+  let config;
 
   beforeEach(() => {
     // Reset mocks

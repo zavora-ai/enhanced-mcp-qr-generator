@@ -19,19 +19,7 @@ module.exports = {
   coverageReporters: ['text', 'lcov', 'html'],
   moduleFileExtensions: ['ts', 'js', 'json'],
   transform: {
-    '^.+\\.tsx?$': ['ts-jest']
+    '^.+\\.tsx?$': 'ts-jest'
   },
-  verbose: true,
-  projects: [
-    {
-      displayName: 'unit',
-      testMatch: ['<rootDir>/tests/unit/**/*.test.ts'],
-      testEnvironment: 'node'
-    },
-    {
-      displayName: 'integration',
-      testMatch: ['<rootDir>/tests/integration/**/*.test.ts'],
-      testEnvironment: 'node'
-    }
-  ]
+  verbose: true
 };

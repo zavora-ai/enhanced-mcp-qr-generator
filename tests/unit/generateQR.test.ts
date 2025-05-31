@@ -45,7 +45,7 @@ describe('QR Code Generation Tool', () => {
   });
 
   test('generateQR should generate an SVG QR code when specified', async () => {
-    const options: QRCodeOptions = {
+    const options = {
       format: 'svg'
     };
 
@@ -57,7 +57,7 @@ describe('QR Code Generation Tool', () => {
   });
 
   test('generateQR should generate a terminal QR code when specified', async () => {
-    const options: QRCodeOptions = {
+    const options = {
       format: 'terminal'
     };
 
@@ -73,7 +73,7 @@ describe('QR Code Generation Tool', () => {
   });
 
   test('generateQR should respect size limits', async () => {
-    const options: QRCodeOptions = {
+    const options = {
       size: 2000
     };
 
