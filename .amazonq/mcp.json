@@ -1,8 +1,8 @@
 {
   "mcpServers": {
     "qr-generator": {
-      "command": "docker",
-      "args": ["run", "-i", "--rm", "zavorai/enhanced-mcp-qr-generator"]
+      "command": "npx",
+      "args": ["-y", "enhanced-mcp-qr-generator"]
     }
   }
 }

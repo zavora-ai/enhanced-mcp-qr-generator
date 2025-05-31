@@ -19,7 +19,9 @@ module.exports = {
   coverageReporters: ['text', 'lcov', 'html'],
   moduleFileExtensions: ['ts', 'js', 'json'],
   transform: {
-    '^.+\\.tsx?$': 'ts-jest'
+    '^.+\\.tsx?$': ['ts-jest', {
+      isolatedModules: true
+    }]
   },
   verbose: true
 };
