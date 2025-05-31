@@ -8,6 +8,7 @@ import * as os from 'os';
 import * as path from 'path';
 import * as http from 'http';
 import { McpServer as ModelContextProtocolServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { Logger } from '../utils/logger';
 
@@ -37,19 +38,6 @@ export class McpServer {
 
     // Register tools
     this.registerTools();
-    
-    // Add getters for tools and resources
-    Object.defineProperty(this.mcpServer, 'tools', {
-      get() {
-        return Object.values(this._registeredTools || {});
-      }
-    });
-
-    Object.defineProperty(this.mcpServer, 'resources', {
-      get() {
-        return Object.values(this._registeredResources || {});
-      }
-    });
   }
 
   /**
@@ -334,9 +322,9 @@ Parameters:
                 
                 this.logger.info(`Tool call: ${name}`);
                 
-                // Find the tool
-                const tool = this.mcpServer && this.mcpServer.tools ? 
-                  this.mcpServer.tools.find((t: any) => t.name === name) : null;
+                // Find the tool in _registeredTools
+                const tool = this.mcpServer._registeredTools && this.mcpServer._registeredTools[name];
+                
                 if (!tool) {
                   res.writeHead(404, { 'Content-Type': 'application/json' });
                   res.end(JSON.stringify({
@@ -397,20 +385,24 @@ Parameters:
               if (request.method === 'tools/list') {
                 this.logger.info('Tools list request');
                 
+                // Get tools from _registeredTools
+                const tools = this.mcpServer._registeredTools ? 
+                  Object.entries(this.mcpServer._registeredTools).map(([name, tool]: [string, any]) => ({
+                    name,
+                    description: tool.description || '',
+                    inputSchema: tool.annotations || {}
+                  })) : [];
+                
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({
                   jsonrpc: '2.0',
                   id: request.id,
                   result: {
-                    tools: this.mcpServer.tools ? this.mcpServer.tools.map((tool: any) => ({
-                      name: tool.name || '',
-                      description: tool.description || '',
-                      inputSchema: tool.annotations || {}
-                    })) : []
+                    tools
                   }
                 }));
                 
-                this.logger.logRpcResponse(request.id, { toolCount: this.mcpServer.tools ? this.mcpServer.tools.length : 0 });
+                this.logger.logRpcResponse(request.id, { toolCount: tools.length });
                 this.logger.logRequest(req.method, req.url, 200, Date.now() - startTime);
                 return;
               }
@@ -419,19 +411,23 @@ Parameters:
               if (request.method === 'resources/list') {
                 this.logger.info('Resources list request');
                 
+                // Get resources from _registeredResources
+                const resources = this.mcpServer._registeredResources ? 
+                  Object.entries(this.mcpServer._registeredResources).map(([uriTemplate, resource]: [string, any]) => ({
+                    name: resource.name || '',
+                    uriTemplate
+                  })) : [];
+                
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({
                   jsonrpc: '2.0',
                   id: request.id,
                   result: {
-                    resources: this.mcpServer.resources ? this.mcpServer.resources.map((resource: any) => ({
-                      name: resource.name || '',
-                      uriTemplate: resource.uriTemplate || ''
-                    })) : []
+                    resources
                   }
                 }));
                 
-                this.logger.logRpcResponse(request.id, { resourceCount: this.mcpServer.resources ? this.mcpServer.resources.length : 0 });
+                this.logger.logRpcResponse(request.id, { resourceCount: resources.length });
                 this.logger.logRequest(req.method, req.url, 200, Date.now() - startTime);
                 return;
               }
@@ -442,13 +438,13 @@ Parameters:
                 
                 this.logger.info(`Resource read: ${uri}`);
                 
-                // Find the resource
-                const resource = this.mcpServer && this.mcpServer.resources ? 
-                  this.mcpServer.resources.find((r: any) => 
-                    uri && r.uriTemplate && uri.startsWith(r.uriTemplate.split('{')[0])
-                  ) : null;
+                // Find the resource in _registeredResources
+                const resourceEntry = this.mcpServer._registeredResources && 
+                  Object.entries(this.mcpServer._registeredResources).find(([template, _]: [string, any]) => 
+                    uri && template && uri.startsWith(template.split('{')[0])
+                  );
                 
-                if (!resource) {
+                if (!resourceEntry) {
                   res.writeHead(404, { 'Content-Type': 'application/json' });
                   res.end(JSON.stringify({
                     jsonrpc: '2.0',
@@ -469,6 +465,7 @@ Parameters:
                 }
 
                 try {
+                  const resource = resourceEntry[1] as any;
                   // Call the resource handler
                   const result = await resource.readCallback(new URL(uri), {});
                   
