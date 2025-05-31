@@ -322,7 +322,8 @@ Parameters:
                 this.logger.info(`Tool call: ${name}`);
                 
                 // Find the tool
-                const tool = this.mcpServer.tools.find((t: any) => t.name === name);
+                const tool = this.mcpServer && this.mcpServer.tools ? 
+                  this.mcpServer.tools.find((t: any) => t.name === name) : null;
                 if (!tool) {
                   res.writeHead(404, { 'Content-Type': 'application/json' });
                   res.end(JSON.stringify({
@@ -396,7 +397,7 @@ Parameters:
                   }
                 }));
                 
-                this.logger.logRpcResponse(request.id, { toolCount: this.mcpServer.tools.length });
+                this.logger.logRpcResponse(request.id, { toolCount: this.mcpServer.tools ? this.mcpServer.tools.length : 0 });
                 this.logger.logRequest(req.method, req.url, 200, Date.now() - startTime);
                 return;
               }
@@ -417,7 +418,7 @@ Parameters:
                   }
                 }));
                 
-                this.logger.logRpcResponse(request.id, { resourceCount: this.mcpServer.resources.length });
+                this.logger.logRpcResponse(request.id, { resourceCount: this.mcpServer.resources ? this.mcpServer.resources.length : 0 });
                 this.logger.logRequest(req.method, req.url, 200, Date.now() - startTime);
                 return;
               }
@@ -429,9 +430,10 @@ Parameters:
                 this.logger.info(`Resource read: ${uri}`);
                 
                 // Find the resource
-                const resource = this.mcpServer.resources.find((r: any) => 
-                  uri.startsWith(r.uriTemplate.split('{')[0])
-                );
+                const resource = this.mcpServer && this.mcpServer.resources ? 
+                  this.mcpServer.resources.find((r: any) => 
+                    uri.startsWith(r.uriTemplate.split('{')[0])
+                  ) : null;
                 
                 if (!resource) {
                   res.writeHead(404, { 'Content-Type': 'application/json' });

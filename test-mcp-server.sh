@@ -10,7 +10,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Server URL
-SERVER_URL="http://localhost:9999"
+SERVER_URL="http://localhost:9998"
 
 echo -e "${BLUE}=== Enhanced MCP QR Generator Server Test ===${NC}"
 echo "Testing server at $SERVER_URL"
