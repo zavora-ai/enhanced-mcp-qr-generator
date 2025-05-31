@@ -45,8 +45,8 @@ export function startServer(config: ServerConfig) {
   });
 
   // Start health check server
-  healthServer.listen(3000, () => {
-    console.error('Health check endpoint available at http://localhost:3000/health');
+  healthServer.listen(9999, () => {
+    console.error('Health check endpoint available at http://localhost:9999/health');
   });
 
   // Handle process termination

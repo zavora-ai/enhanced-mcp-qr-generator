@@ -36,7 +36,7 @@ export interface ServerConfig {
  * Default server configuration
  */
 export const defaultConfig: ServerConfig = {
-  port: 3000,
+  port: 9999,
   host: 'localhost',
   maxConcurrentRequests: 10,
   defaultErrorCorrectionLevel: 'M',

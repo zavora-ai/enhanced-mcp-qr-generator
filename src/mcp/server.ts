@@ -308,7 +308,7 @@ export class McpServer {
       );
 
       // Format the result based on the QR code format
-      let content = [];
+      let content: Array<{ type: string; text?: string; data?: string; mimeType?: string }> = [];
 
       if (qrResult.format === 'terminal' || qrResult.format === 'base64') {
         // For terminal or base64 format, return as text
@@ -400,7 +400,7 @@ export class McpServer {
               type: 'text',
               text: `QR code saved to ${savedPath}`
             }
-          ],
+          ] as Array<{ type: string; text: string }>,
           structuredContent: {
             path: savedPath,
             format: qrResult.format,
