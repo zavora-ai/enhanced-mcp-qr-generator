@@ -2,151 +2,19 @@
  * MCP Server implementation for QR code generation
  */
 
-// Mock MCP SDK for development
-// In a real implementation, this would be imported from '@modelcontextprotocol/sdk'
-interface MCPToolCall {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  parameters: Record<string, any>;
-}
-
-interface MCPToolResult {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  result?: any;
-  error?: string;
-}
-
-interface MCPTool {
-  name: string;
-  description: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  inputSchema: any;
-  handler: (toolCall: MCPToolCall) => Promise<MCPToolResult>;
-}
-
-class MCPServer {
-  private tools: MCPTool[] = [];
-
-  registerTool(tool: MCPTool): void {
-    this.tools.push(tool);
-  }
-
-  async start(): Promise<void> {
-    // Mock implementation
-    console.error('MCP Server started');
-  }
-
-  async stop(): Promise<void> {
-    // Mock implementation
-    console.error('MCP Server stopped');
-  }
-
-  getTools(): MCPTool[] {
-    return this.tools;
-  }
-
-  async handleRequest(requestBody: string): Promise<string> {
-    try {
-      const request = JSON.parse(requestBody);
-
-      // Check if it's a valid JSON-RPC 2.0 request
-      if (request.jsonrpc !== '2.0' || !request.method || request.id === undefined) {
-        return JSON.stringify({
-          jsonrpc: '2.0',
-          id: request.id || null,
-          error: {
-            code: -32600,
-            message: 'Invalid Request'
-          }
-        });
-      }
-
-      // Handle tools/call method
-      if (request.method === 'tools/call') {
-        const { name, arguments: args } = request.params;
-
-        // Find the tool
-        const tool = this.tools.find(t => t.name === name);
-        if (!tool) {
-          return JSON.stringify({
-            jsonrpc: '2.0',
-            id: request.id,
-            error: {
-              code: -32601,
-              message: `Tool not found: ${name}`
-            }
-          });
-        }
-
-        // Call the tool
-        const result = await tool.handler({ parameters: args });
-
-        // Return the result
-        if (result.error) {
-          return JSON.stringify({
-            jsonrpc: '2.0',
-            id: request.id,
-            error: {
-              code: -32000,
-              message: result.error
-            }
-          });
-        } else {
-          return JSON.stringify({
-            jsonrpc: '2.0',
-            id: request.id,
-            result: result.result
-          });
-        }
-      }
-
-      // Handle tools/list method
-      if (request.method === 'tools/list') {
-        return JSON.stringify({
-          jsonrpc: '2.0',
-          id: request.id,
-          result: {
-            tools: this.tools.map(tool => ({
-              name: tool.name,
-              description: tool.description,
-              inputSchema: tool.inputSchema
-            }))
-          }
-        });
-      }
-
-      // Method not found
-      return JSON.stringify({
-        jsonrpc: '2.0',
-        id: request.id,
-        error: {
-          code: -32601,
-          message: `Method not found: ${request.method}`
-        }
-      });
-    } catch (error) {
-      return JSON.stringify({
-        jsonrpc: '2.0',
-        id: null,
-        error: {
-          code: -32700,
-          message: 'Parse error'
-        }
-      });
-    }
-  }
-}
-
 import { ServerConfig } from '../config';
 import { generateQR, saveQRToFile } from '../tools/generateQR';
 import * as os from 'os';
 import * as path from 'path';
 import * as http from 'http';
+import { McpServer, ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { z } from 'zod';
 
 /**
  * MCP Server for QR code generation
  */
 export class McpServer {
-  private server: MCPServer;
+  private mcpServer: any;
   private config: ServerConfig;
   private httpServer: http.Server | null = null;
 
@@ -156,7 +24,10 @@ export class McpServer {
    */
   constructor(config: ServerConfig) {
     this.config = config;
-    this.server = new MCPServer();
+    this.mcpServer = new McpServer({
+      name: "Enhanced MCP QR Generator",
+      version: "2.1.2"
+    });
 
     // Register tools
     this.registerTools();
@@ -167,252 +38,208 @@ export class McpServer {
    */
   private registerTools() {
     // Generate QR code
-    this.server.registerTool({
-      name: 'generate_qr',
-      description: 'Generate a QR code from text or URL',
-      inputSchema: {
-        type: 'object',
-        properties: {
-          text: {
-            type: 'string',
-            description: 'Text or URL to encode in the QR code'
-          },
-          errorCorrectionLevel: {
-            type: 'string',
-            enum: ['L', 'M', 'Q', 'H'],
-            description: 'Error correction level (L: 7%, M: 15%, Q: 25%, H: 30%)'
-          },
-          format: {
-            type: 'string',
-            enum: ['png', 'svg', 'base64', 'terminal'],
-            description: 'Output format'
-          },
-          size: {
-            type: 'number',
-            description: 'Size of QR code in pixels (for PNG) or viewBox (for SVG)'
-          },
-          margin: {
-            type: 'number',
-            description: 'Margin around the QR code in modules'
-          },
-          color: {
-            type: 'string',
-            description: 'Color of the QR code (dark modules)'
-          },
-          backgroundColor: {
-            type: 'string',
-            description: 'Background color of the QR code (light modules)'
-          },
-          logo: {
-            type: 'string',
-            description: 'URL or base64 encoded image to add as logo in the center of the QR code'
-          },
-          logoSize: {
-            type: 'number',
-            description: 'Size of the logo as a percentage of the QR code size (1-100)'
-          }
-        },
-        required: ['text']
+    this.mcpServer.tool(
+      'generate_qr',
+      {
+        text: z.string().min(1, "Text or URL is required"),
+        errorCorrectionLevel: z.enum(['L', 'M', 'Q', 'H']).optional(),
+        format: z.enum(['png', 'svg', 'base64', 'terminal']).optional(),
+        size: z.number().min(10).max(this.config.maxQRCodeSize).optional(),
+        margin: z.number().min(0).max(10).optional(),
+        color: z.string().optional(),
+        backgroundColor: z.string().optional(),
+        logo: z.string().optional(),
+        logoSize: z.number().min(1).max(100).optional()
       },
-      handler: this.handleGenerateQR.bind(this)
-    });
+      async (params: any) => {
+        try {
+          const qrResult = await generateQR(
+            params.text,
+            {
+              errorCorrectionLevel: params.errorCorrectionLevel,
+              format: params.format,
+              size: params.size,
+              margin: params.margin,
+              color: params.color,
+              backgroundColor: params.backgroundColor,
+              logo: params.logo ? { image: params.logo, size: params.logoSize } : undefined
+            },
+            this.config
+          );
+
+          // Format the result based on the QR code format
+          let content: Array<{ type: string; text?: string; data?: string; mimeType?: string }> = [];
+
+          if (qrResult.format === 'terminal' || qrResult.format === 'base64') {
+            // For terminal or base64 format, return as text
+            content = [
+              {
+                type: 'text',
+                text: qrResult.data
+              }
+            ];
+          } else {
+            // For PNG or SVG, return as image with proper MIME type
+            content = [
+              {
+                type: 'image',
+                data: qrResult.data.replace(/^data:image\/[^;]+;base64,/, ''),
+                mimeType: qrResult.mimeType
+              }
+            ];
+          }
+
+          // Return the result
+          return {
+            content,
+            structuredContent: {
+              format: qrResult.format,
+              size: qrResult.size,
+              content: qrResult.content,
+              timestamp: qrResult.timestamp
+            }
+          };
+        } catch (error) {
+          console.error('Error generating QR code:', error);
+          return {
+            content: [{ type: 'text', text: `Error: ${(error as Error).message}` }],
+            isError: true
+          };
+        }
+      }
+    );
 
     // Generate and save QR code
-    this.server.registerTool({
-      name: 'save_qr',
-      description: 'Generate a QR code and save it to a file',
-      inputSchema: {
-        type: 'object',
-        properties: {
-          text: {
-            type: 'string',
-            description: 'Text or URL to encode in the QR code'
-          },
-          outputPath: {
-            type: 'string',
-            description: 'Path where the QR code will be saved'
-          },
-          errorCorrectionLevel: {
-            type: 'string',
-            enum: ['L', 'M', 'Q', 'H'],
-            description: 'Error correction level (L: 7%, M: 15%, Q: 25%, H: 30%)'
-          },
-          format: {
-            type: 'string',
-            enum: ['png', 'svg', 'base64', 'terminal'],
-            description: 'Output format'
-          },
-          size: {
-            type: 'number',
-            description: 'Size of QR code in pixels (for PNG) or viewBox (for SVG)'
-          },
-          margin: {
-            type: 'number',
-            description: 'Margin around the QR code in modules'
-          },
-          color: {
-            type: 'string',
-            description: 'Color of the QR code (dark modules)'
-          },
-          backgroundColor: {
-            type: 'string',
-            description: 'Background color of the QR code (light modules)'
-          },
-          logo: {
-            type: 'string',
-            description: 'URL or base64 encoded image to add as logo in the center of the QR code'
-          },
-          logoSize: {
-            type: 'number',
-            description: 'Size of the logo as a percentage of the QR code size (1-100)'
-          }
-        },
-        required: ['text', 'outputPath']
+    this.mcpServer.tool(
+      'save_qr',
+      {
+        text: z.string().min(1, "Text or URL is required"),
+        outputPath: z.string().min(1, "Output path is required"),
+        errorCorrectionLevel: z.enum(['L', 'M', 'Q', 'H']).optional(),
+        format: z.enum(['png', 'svg', 'base64', 'terminal']).optional(),
+        size: z.number().min(10).max(this.config.maxQRCodeSize).optional(),
+        margin: z.number().min(0).max(10).optional(),
+        color: z.string().optional(),
+        backgroundColor: z.string().optional(),
+        logo: z.string().optional(),
+        logoSize: z.number().min(1).max(100).optional()
       },
-      handler: this.handleSaveQR.bind(this)
-    });
-  }
-
-  /**
-   * Handle generate QR code tool call
-   * @param toolCall Tool call
-   * @returns Tool result
-   */
-  private async handleGenerateQR(toolCall: MCPToolCall): Promise<MCPToolResult> {
-    try {
-      const {
-        text,
-        errorCorrectionLevel,
-        format,
-        size,
-        margin,
-        color,
-        backgroundColor,
-        logo,
-        logoSize
-      } = toolCall.parameters;
-
-      // Generate QR code
-      const qrResult = await generateQR(
-        text,
-        {
-          errorCorrectionLevel,
-          format,
-          size,
-          margin,
-          color,
-          backgroundColor,
-          logo: logo ? { image: logo, size: logoSize } : undefined
-        },
-        this.config
-      );
-
-      // Format the result based on the QR code format
-      let content: Array<{ type: string; text?: string; data?: string; mimeType?: string }> = [];
-
-      if (qrResult.format === 'terminal' || qrResult.format === 'base64') {
-        // For terminal or base64 format, return as text
-        content = [
-          {
-            type: 'text',
-            text: qrResult.data
+      async (params: any) => {
+        try {
+          // Resolve output path
+          let resolvedPath = params.outputPath;
+          if (resolvedPath.startsWith('~')) {
+            resolvedPath = path.join(os.homedir(), resolvedPath.slice(1));
           }
-        ];
-      } else {
-        // For PNG or SVG, return as image with proper MIME type
-        content = [
-          {
-            type: 'image',
-            data: qrResult.data.replace(/^data:image\/[^;]+;base64,/, ''),
-            mimeType: qrResult.mimeType
-          }
-        ];
-      }
 
-      // Return the result
-      return {
-        result: {
-          content,
-          structuredContent: {
-            format: qrResult.format,
-            size: qrResult.size,
-            content: qrResult.content,
-            timestamp: qrResult.timestamp
-          }
-        }
-      };
-    } catch (error) {
-      console.error('Error generating QR code:', error);
-      return {
-        error: (error as Error).message
-      };
-    }
-  }
-
-  /**
-   * Handle save QR code tool call
-   * @param toolCall Tool call
-   * @returns Tool result
-   */
-  private async handleSaveQR(toolCall: MCPToolCall): Promise<MCPToolResult> {
-    try {
-      const {
-        text,
-        outputPath,
-        errorCorrectionLevel,
-        format,
-        size,
-        margin,
-        color,
-        backgroundColor,
-        logo,
-        logoSize
-      } = toolCall.parameters;
-
-      // Resolve output path
-      let resolvedPath = outputPath;
-      if (outputPath.startsWith('~')) {
-        resolvedPath = path.join(os.homedir(), outputPath.slice(1));
-      }
-
-      // Generate QR code
-      const qrResult = await generateQR(
-        text,
-        {
-          errorCorrectionLevel,
-          format,
-          size,
-          margin,
-          color,
-          backgroundColor,
-          logo: logo ? { image: logo, size: logoSize } : undefined
-        },
-        this.config
-      );
-
-      // Save to file
-      const savedPath = await saveQRToFile(qrResult, resolvedPath);
-
-      return {
-        result: {
-          content: [
+          // Generate QR code
+          const qrResult = await generateQR(
+            params.text,
             {
-              type: 'text',
-              text: `QR code saved to ${savedPath}`
+              errorCorrectionLevel: params.errorCorrectionLevel,
+              format: params.format,
+              size: params.size,
+              margin: params.margin,
+              color: params.color,
+              backgroundColor: params.backgroundColor,
+              logo: params.logo ? { image: params.logo, size: params.logoSize } : undefined
+            },
+            this.config
+          );
+
+          // Save to file
+          const savedPath = await saveQRToFile(qrResult, resolvedPath);
+
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `QR code saved to ${savedPath}`
+              }
+            ],
+            structuredContent: {
+              path: savedPath,
+              format: qrResult.format,
+              size: qrResult.size
             }
-          ] as Array<{ type: string; text: string }>,
-          structuredContent: {
-            path: savedPath,
-            format: qrResult.format,
-            size: qrResult.size
-          }
+          };
+        } catch (error) {
+          console.error('Error saving QR code:', error);
+          return {
+            content: [{ type: 'text', text: `Error: ${(error as Error).message}` }],
+            isError: true
+          };
         }
-      };
-    } catch (error) {
-      return {
-        error: (error as Error).message
-      };
-    }
+      }
+    );
+
+    // Add a resource for QR code documentation
+    this.mcpServer.resource(
+      'documentation',
+      'qr-docs://guide',
+      async (uri) => ({
+        contents: [{
+          uri: uri.href,
+          text: `
+# QR Code Generation Guide
+
+This MCP server provides tools for generating QR codes from text or URLs.
+
+## Tools
+
+### generate_qr
+
+Generates a QR code from text or URL.
+
+Parameters:
+- text: Text or URL to encode (required)
+- errorCorrectionLevel: Error correction level (L, M, Q, H)
+- format: Output format (png, svg, base64, terminal)
+- size: Size in pixels
+- margin: Margin around the QR code
+- color: Color of the QR code
+- backgroundColor: Background color
+- logo: URL or base64 encoded image for logo
+- logoSize: Size of logo as percentage of QR code
+
+### save_qr
+
+Generates a QR code and saves it to a file.
+
+Parameters:
+- text: Text or URL to encode (required)
+- outputPath: Path to save the QR code (required)
+- (All other parameters from generate_qr)
+
+## Examples
+
+1. Generate a simple QR code:
+   \`\`\`
+   generate_qr(text: "https://example.com")
+   \`\`\`
+
+2. Generate a customized QR code:
+   \`\`\`
+   generate_qr(
+     text: "https://example.com",
+     format: "svg",
+     size: 500,
+     errorCorrectionLevel: "H",
+     color: "#0000ff"
+   )
+   \`\`\`
+
+3. Save a QR code to file:
+   \`\`\`
+   save_qr(
+     text: "https://example.com",
+     outputPath: "~/qrcode.png"
+   )
+   \`\`\`
+`
+        }]
+      })
+    );
   }
 
   /**
@@ -445,39 +272,182 @@ export class McpServer {
           req.on('end', async () => {
             try {
               // Process the request using MCP server
-              const response = await this.server.handleRequest(body);
+              // This is a simplified implementation - in a production environment,
+              // you would use the proper transport from the SDK
+              const request = JSON.parse(body);
+              
+              // Check if it's a valid JSON-RPC 2.0 request
+              if (request.jsonrpc !== '2.0' || !request.method || request.id === undefined) {
+                res.writeHead(400, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({
+                  jsonrpc: '2.0',
+                  id: request.id || null,
+                  error: {
+                    code: -32600,
+                    message: 'Invalid Request'
+                  }
+                }));
+                return;
+              }
 
-              // Send the response
-              res.writeHead(200, { 'Content-Type': 'application/json' });
-              res.end(response);
+              // Handle tools/call method
+              if (request.method === 'tools/call') {
+                const { name, arguments: args } = request.params;
+                
+                // Find the tool
+                const tool = this.mcpServer.tools.find((t: any) => t.name === name);
+                if (!tool) {
+                  res.writeHead(404, { 'Content-Type': 'application/json' });
+                  res.end(JSON.stringify({
+                    jsonrpc: '2.0',
+                    id: request.id,
+                    error: {
+                      code: -32601,
+                      message: `Tool not found: ${name}`
+                    }
+                  }));
+                  return;
+                }
+
+                try {
+                  // Call the tool
+                  const result = await tool.handler(args);
+                  
+                  // Return the result
+                  res.writeHead(200, { 'Content-Type': 'application/json' });
+                  res.end(JSON.stringify({
+                    jsonrpc: '2.0',
+                    id: request.id,
+                    result: result
+                  }));
+                } catch (error) {
+                  res.writeHead(500, { 'Content-Type': 'application/json' });
+                  res.end(JSON.stringify({
+                    jsonrpc: '2.0',
+                    id: request.id,
+                    error: {
+                      code: -32000,
+                      message: (error as Error).message
+                    }
+                  }));
+                }
+                return;
+              }
+
+              // Handle tools/list method
+              if (request.method === 'tools/list') {
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({
+                  jsonrpc: '2.0',
+                  id: request.id,
+                  result: {
+                    tools: this.mcpServer.tools.map((tool: any) => ({
+                      name: tool.name,
+                      description: tool.description,
+                      inputSchema: tool.paramSchema
+                    }))
+                  }
+                }));
+                return;
+              }
+
+              // Handle resources/list method
+              if (request.method === 'resources/list') {
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({
+                  jsonrpc: '2.0',
+                  id: request.id,
+                  result: {
+                    resources: this.mcpServer.resources.map((resource: any) => ({
+                      name: resource.name,
+                      uriTemplate: resource.uriTemplate
+                    }))
+                  }
+                }));
+                return;
+              }
+
+              // Handle resources/read method
+              if (request.method === 'resources/read') {
+                const { uri } = request.params;
+                
+                // Find the resource
+                const resource = this.mcpServer.resources.find((r: any) => 
+                  uri.startsWith(r.uriTemplate.split('{')[0])
+                );
+                
+                if (!resource) {
+                  res.writeHead(404, { 'Content-Type': 'application/json' });
+                  res.end(JSON.stringify({
+                    jsonrpc: '2.0',
+                    id: request.id,
+                    error: {
+                      code: -32601,
+                      message: `Resource not found: ${uri}`
+                    }
+                  }));
+                  return;
+                }
+
+                try {
+                  // Call the resource handler
+                  const result = await resource.handler(new URL(uri), {});
+                  
+                  // Return the result
+                  res.writeHead(200, { 'Content-Type': 'application/json' });
+                  res.end(JSON.stringify({
+                    jsonrpc: '2.0',
+                    id: request.id,
+                    result: result
+                  }));
+                } catch (error) {
+                  res.writeHead(500, { 'Content-Type': 'application/json' });
+                  res.end(JSON.stringify({
+                    jsonrpc: '2.0',
+                    id: request.id,
+                    error: {
+                      code: -32000,
+                      message: (error as Error).message
+                    }
+                  }));
+                }
+                return;
+              }
+
+              // Method not found
+              res.writeHead(404, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({
+                jsonrpc: '2.0',
+                id: request.id,
+                error: {
+                  code: -32601,
+                  message: `Method not found: ${request.method}`
+                }
+              }));
             } catch (error) {
               console.error('Error processing request:', error);
               res.writeHead(500, { 'Content-Type': 'application/json' });
-              res.end(
-                JSON.stringify({
-                  jsonrpc: '2.0',
-                  id: null,
-                  error: {
-                    code: -32603,
-                    message: 'Internal server error'
-                  }
-                })
-              );
+              res.end(JSON.stringify({
+                jsonrpc: '2.0',
+                id: null,
+                error: {
+                  code: -32700,
+                  message: 'Parse error'
+                }
+              }));
             }
           });
         } else {
           // Non-supported route/method
           res.writeHead(404, { 'Content-Type': 'application/json' });
-          res.end(
-            JSON.stringify({
-              jsonrpc: '2.0',
-              id: null,
-              error: {
-                code: -32601,
-                message: 'Not found'
-              }
-            })
-          );
+          res.end(JSON.stringify({
+            jsonrpc: '2.0',
+            id: null,
+            error: {
+              code: -32601,
+              message: 'Not found'
+            }
+          }));
         }
       });
 
@@ -495,8 +465,7 @@ export class McpServer {
         }
       });
 
-      // Start the MCP server
-      await this.server.start();
+      console.error(`Health check endpoint available at http://${this.config.host}:${this.config.port}/health`);
     } catch (error) {
       console.error('Failed to start MCP server:', error);
       throw error;
@@ -508,9 +477,6 @@ export class McpServer {
    */
   async stop(): Promise<void> {
     try {
-      // Stop the MCP server
-      await this.server.stop();
-
       // Close the HTTP server if it exists
       if (this.httpServer) {
         this.httpServer.close();
