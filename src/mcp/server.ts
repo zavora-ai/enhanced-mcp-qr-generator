@@ -9,6 +9,7 @@ import * as path from 'path';
 import * as http from 'http';
 import { McpServer as ModelContextProtocolServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
+import { Logger } from '../utils/logger';
 
 /**
  * MCP Server for QR code generation
@@ -17,6 +18,7 @@ export class McpServer {
   private mcpServer: any;
   private config: ServerConfig;
   private httpServer: http.Server | null = null;
+  private logger: Logger;
 
   /**
    * Create a new MCP Server
@@ -28,6 +30,10 @@ export class McpServer {
       name: "Enhanced MCP QR Generator",
       version: "2.1.2"
     });
+    
+    // Initialize logger
+    this.logger = new Logger(config);
+    this.logger.info('MCP Server initializing');
 
     // Register tools
     this.registerTools();
@@ -37,6 +43,8 @@ export class McpServer {
    * Register MCP tools
    */
   private registerTools() {
+    this.logger.info('Registering MCP tools');
+    
     // Generate QR code
     this.mcpServer.tool(
       'generate_qr',
@@ -66,6 +74,8 @@ export class McpServer {
             },
             this.config
           );
+          
+          this.logger.info(`Generated QR code for text: ${params.text.substring(0, 30)}${params.text.length > 30 ? '...' : ''}`);
 
           // Format the result based on the QR code format
           let content: Array<{ type: string; text?: string; data?: string; mimeType?: string }> = [];
@@ -100,6 +110,7 @@ export class McpServer {
             }
           };
         } catch (error) {
+          this.logger.error(`Error generating QR code: ${(error as Error).message}`);
           console.error('Error generating QR code:', error);
           return {
             content: [{ type: 'text', text: `Error: ${(error as Error).message}` }],
@@ -149,6 +160,8 @@ export class McpServer {
 
           // Save to file
           const savedPath = await saveQRToFile(qrResult, resolvedPath);
+          
+          this.logger.info(`Saved QR code to ${savedPath}`);
 
           return {
             content: [
@@ -164,6 +177,7 @@ export class McpServer {
             }
           };
         } catch (error) {
+          this.logger.error(`Error saving QR code: ${(error as Error).message}`);
           console.error('Error saving QR code:', error);
           return {
             content: [{ type: 'text', text: `Error: ${(error as Error).message}` }],
@@ -240,6 +254,8 @@ Parameters:
         }]
       })
     );
+    
+    this.logger.info('MCP tools registered successfully');
   }
 
   /**
@@ -247,6 +263,8 @@ Parameters:
    */
   async start(): Promise<void> {
     try {
+      this.logger.info('Starting MCP server');
+      
       // Create HTTP server to handle requests
       this.httpServer = http.createServer(async (req, res) => {
         // --------------------------------------------------
@@ -260,10 +278,12 @@ Parameters:
           // stand-alone health server.
           const { healthHandler } = await import('../health');
           healthHandler(req, res);
+          this.logger.debug('Health check request');
           return;
         }
 
         if (req.method === 'POST') {
+          const startTime = Date.now();
           let body = '';
           req.on('data', chunk => {
             body += chunk.toString();
@@ -276,6 +296,8 @@ Parameters:
               // you would use the proper transport from the SDK
               const request = JSON.parse(body);
               
+              this.logger.logRpcRequest(request.method, request.id, request.params);
+              
               // Check if it's a valid JSON-RPC 2.0 request
               if (request.jsonrpc !== '2.0' || !request.method || request.id === undefined) {
                 res.writeHead(400, { 'Content-Type': 'application/json' });
@@ -287,12 +309,17 @@ Parameters:
                     message: 'Invalid Request'
                   }
                 }));
+                
+                this.logger.error('Invalid JSON-RPC request');
+                this.logger.logRequest(req.method, req.url, 400, Date.now() - startTime);
                 return;
               }
 
               // Handle tools/call method
               if (request.method === 'tools/call') {
                 const { name, arguments: args } = request.params;
+                
+                this.logger.info(`Tool call: ${name}`);
                 
                 // Find the tool
                 const tool = this.mcpServer.tools.find((t: any) => t.name === name);
@@ -306,6 +333,13 @@ Parameters:
                       message: `Tool not found: ${name}`
                     }
                   }));
+                  
+                  this.logger.error(`Tool not found: ${name}`);
+                  this.logger.logRpcResponse(request.id, undefined, {
+                    code: -32601,
+                    message: `Tool not found: ${name}`
+                  });
+                  this.logger.logRequest(req.method, req.url, 404, Date.now() - startTime);
                   return;
                 }
 
@@ -320,7 +354,12 @@ Parameters:
                     id: request.id,
                     result: result
                   }));
+                  
+                  this.logger.logRpcResponse(request.id, result);
+                  this.logger.logRequest(req.method, req.url, 200, Date.now() - startTime);
                 } catch (error) {
+                  this.logger.error(`Error executing tool ${name}: ${(error as Error).message}`);
+                  
                   res.writeHead(500, { 'Content-Type': 'application/json' });
                   res.end(JSON.stringify({
                     jsonrpc: '2.0',
@@ -330,12 +369,20 @@ Parameters:
                       message: (error as Error).message
                     }
                   }));
+                  
+                  this.logger.logRpcResponse(request.id, undefined, {
+                    code: -32000,
+                    message: (error as Error).message
+                  });
+                  this.logger.logRequest(req.method, req.url, 500, Date.now() - startTime);
                 }
                 return;
               }
 
               // Handle tools/list method
               if (request.method === 'tools/list') {
+                this.logger.info('Tools list request');
+                
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({
                   jsonrpc: '2.0',
@@ -348,11 +395,16 @@ Parameters:
                     }))
                   }
                 }));
+                
+                this.logger.logRpcResponse(request.id, { toolCount: this.mcpServer.tools.length });
+                this.logger.logRequest(req.method, req.url, 200, Date.now() - startTime);
                 return;
               }
 
               // Handle resources/list method
               if (request.method === 'resources/list') {
+                this.logger.info('Resources list request');
+                
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({
                   jsonrpc: '2.0',
@@ -364,12 +416,17 @@ Parameters:
                     }))
                   }
                 }));
+                
+                this.logger.logRpcResponse(request.id, { resourceCount: this.mcpServer.resources.length });
+                this.logger.logRequest(req.method, req.url, 200, Date.now() - startTime);
                 return;
               }
 
               // Handle resources/read method
               if (request.method === 'resources/read') {
                 const { uri } = request.params;
+                
+                this.logger.info(`Resource read: ${uri}`);
                 
                 // Find the resource
                 const resource = this.mcpServer.resources.find((r: any) => 
@@ -386,6 +443,13 @@ Parameters:
                       message: `Resource not found: ${uri}`
                     }
                   }));
+                  
+                  this.logger.error(`Resource not found: ${uri}`);
+                  this.logger.logRpcResponse(request.id, undefined, {
+                    code: -32601,
+                    message: `Resource not found: ${uri}`
+                  });
+                  this.logger.logRequest(req.method, req.url, 404, Date.now() - startTime);
                   return;
                 }
 
@@ -400,7 +464,12 @@ Parameters:
                     id: request.id,
                     result: result
                   }));
+                  
+                  this.logger.logRpcResponse(request.id, result);
+                  this.logger.logRequest(req.method, req.url, 200, Date.now() - startTime);
                 } catch (error) {
+                  this.logger.error(`Error reading resource ${uri}: ${(error as Error).message}`);
+                  
                   res.writeHead(500, { 'Content-Type': 'application/json' });
                   res.end(JSON.stringify({
                     jsonrpc: '2.0',
@@ -410,6 +479,12 @@ Parameters:
                       message: (error as Error).message
                     }
                   }));
+                  
+                  this.logger.logRpcResponse(request.id, undefined, {
+                    code: -32000,
+                    message: (error as Error).message
+                  });
+                  this.logger.logRequest(req.method, req.url, 500, Date.now() - startTime);
                 }
                 return;
               }
@@ -424,8 +499,16 @@ Parameters:
                   message: `Method not found: ${request.method}`
                 }
               }));
+              
+              this.logger.error(`Method not found: ${request.method}`);
+              this.logger.logRpcResponse(request.id, undefined, {
+                code: -32601,
+                message: `Method not found: ${request.method}`
+              });
+              this.logger.logRequest(req.method, req.url, 404, Date.now() - startTime);
             } catch (error) {
-              console.error('Error processing request:', error);
+              this.logger.error(`Error processing request: ${(error as Error).message}`);
+              
               res.writeHead(500, { 'Content-Type': 'application/json' });
               res.end(JSON.stringify({
                 jsonrpc: '2.0',
@@ -435,6 +518,8 @@ Parameters:
                   message: 'Parse error'
                 }
               }));
+              
+              this.logger.logRequest(req.method, req.url, 500, Date.now() - startTime);
             }
           });
         } else {
@@ -448,26 +533,28 @@ Parameters:
               message: 'Not found'
             }
           }));
+          
+          this.logger.warn(`Unsupported method: ${req.method} ${req.url || '/'}`);
         }
       });
 
       // Start the HTTP server
       this.httpServer.listen(this.config.port, this.config.host, () => {
-        console.error(`MCP Server started on http://${this.config.host}:${this.config.port}`);
+        this.logger.info(`MCP Server started on http://${this.config.host}:${this.config.port}`);
       }).on('error', (error: NodeJS.ErrnoException) => {
         if (error.code === 'EADDRINUSE') {
-          console.error(`Error: Port ${this.config.port} is already in use.`);
-          console.error('Please choose a different port by setting the PORT environment variable.');
+          this.logger.error(`Error: Port ${this.config.port} is already in use.`);
+          this.logger.error('Please choose a different port by setting the PORT environment variable.');
           process.exit(1);
         } else {
-          console.error('Server failed to start:', error);
+          this.logger.error(`Failed to start server: ${error.message}`);
           throw error;
         }
       });
 
-      console.error(`Health check endpoint available at http://${this.config.host}:${this.config.port}/health`);
+      this.logger.info(`Health check endpoint available at http://${this.config.host}:${this.config.port}/health`);
     } catch (error) {
-      console.error('Failed to start MCP server:', error);
+      this.logger.error(`Failed to start MCP server: ${(error as Error).message}`);
       throw error;
     }
   }
@@ -477,13 +564,18 @@ Parameters:
    */
   async stop(): Promise<void> {
     try {
+      this.logger.info('Stopping MCP server');
+      
       // Close the HTTP server if it exists
       if (this.httpServer) {
         this.httpServer.close();
         this.httpServer = null;
+        this.logger.info('HTTP server closed');
       }
+      
+      this.logger.info('MCP server stopped');
     } catch (error) {
-      console.error('Failed to stop MCP server:', error);
+      this.logger.error(`Failed to stop MCP server: ${(error as Error).message}`);
       throw error;
     }
   }
