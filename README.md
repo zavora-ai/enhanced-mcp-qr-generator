@@ -287,6 +287,39 @@ npm run build
 npm test
 ```
 
+### Permission Management
+
+If you encounter permission issues with node_modules, use one of these solutions:
+
+#### Option 1: Fix Permissions Script
+
+Run the included script to fix permissions:
+
+```bash
+./fix-permissions.sh
+```
+
+This script will:
+1. Check current ownership of node_modules
+2. Create backups of package.json and package-lock.json
+3. Remove the node_modules directory
+4. Reinstall dependencies with correct permissions
+5. Verify the fix worked correctly
+
+#### Option 2: Docker-based npm
+
+Use the Docker-based npm script to avoid permission issues:
+
+```bash
+# Install dependencies
+./docker-npm.sh install
+
+# Or use npm ci for clean install
+./docker-npm.sh ci
+```
+
+This runs npm commands in a Docker container with your user permissions, preventing any root-owned files.
+
 ### Testing
 
 The project includes both unit tests and integration tests:
