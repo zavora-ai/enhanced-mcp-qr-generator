@@ -102,6 +102,8 @@ describe('QR Code Generation Tool', () => {
       maxLogoSize: 1024 * 1024
     };
 
-    await expect(generateQR('https://example.com', options, config)).rejects.toThrow('QR code size exceeds maximum');
+    await expect(generateQR('https://example.com', options, config)).rejects.toThrow(
+      'QR code size exceeds maximum'
+    );
   });
 });

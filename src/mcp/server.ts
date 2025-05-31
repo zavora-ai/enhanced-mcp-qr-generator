@@ -47,7 +47,7 @@ class MCPServer {
   async handleRequest(requestBody: string): Promise<string> {
     try {
       const request = JSON.parse(requestBody);
-      
+
       // Check if it's a valid JSON-RPC 2.0 request
       if (request.jsonrpc !== '2.0' || !request.method || request.id === undefined) {
         return JSON.stringify({
@@ -59,11 +59,11 @@ class MCPServer {
           }
         });
       }
-      
+
       // Handle tools/call method
       if (request.method === 'tools/call') {
         const { name, arguments: args } = request.params;
-        
+
         // Find the tool
         const tool = this.tools.find(t => t.name === name);
         if (!tool) {
@@ -76,10 +76,10 @@ class MCPServer {
             }
           });
         }
-        
+
         // Call the tool
         const result = await tool.handler({ parameters: args });
-        
+
         // Return the result
         if (result.error) {
           return JSON.stringify({
@@ -98,7 +98,7 @@ class MCPServer {
           });
         }
       }
-      
+
       // Handle tools/list method
       if (request.method === 'tools/list') {
         return JSON.stringify({
@@ -113,7 +113,7 @@ class MCPServer {
           }
         });
       }
-      
+
       // Method not found
       return JSON.stringify({
         jsonrpc: '2.0',
@@ -309,7 +309,7 @@ export class McpServer {
 
       // Format the result based on the QR code format
       let content = [];
-      
+
       if (qrResult.format === 'terminal' || qrResult.format === 'base64') {
         // For terminal or base64 format, return as text
         content = [
@@ -427,46 +427,50 @@ export class McpServer {
           req.on('data', chunk => {
             body += chunk.toString();
           });
-          
+
           req.on('end', async () => {
             try {
               // Process the request using MCP server
               const response = await this.server.handleRequest(body);
-              
+
               // Send the response
               res.writeHead(200, { 'Content-Type': 'application/json' });
               res.end(response);
             } catch (error) {
               console.error('Error processing request:', error);
               res.writeHead(500, { 'Content-Type': 'application/json' });
-              res.end(JSON.stringify({
-                jsonrpc: '2.0',
-                id: null,
-                error: {
-                  code: -32603,
-                  message: 'Internal server error'
-                }
-              }));
+              res.end(
+                JSON.stringify({
+                  jsonrpc: '2.0',
+                  id: null,
+                  error: {
+                    code: -32603,
+                    message: 'Internal server error'
+                  }
+                })
+              );
             }
           });
         } else {
           res.writeHead(405, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({
-            jsonrpc: '2.0',
-            id: null,
-            error: {
-              code: -32600,
-              message: 'Method not allowed'
-            }
-          }));
+          res.end(
+            JSON.stringify({
+              jsonrpc: '2.0',
+              id: null,
+              error: {
+                code: -32600,
+                message: 'Method not allowed'
+              }
+            })
+          );
         }
       });
-      
+
       // Start the HTTP server
       this.httpServer.listen(this.config.port, this.config.host, () => {
         console.error(`MCP Server started on http://${this.config.host}:${this.config.port}`);
       });
-      
+
       // Start the MCP server
       await this.server.start();
     } catch (error) {
@@ -482,7 +486,7 @@ export class McpServer {
     try {
       // Stop the MCP server
       await this.server.stop();
-      
+
       // Close the HTTP server if it exists
       if (this.httpServer) {
         this.httpServer.close();
