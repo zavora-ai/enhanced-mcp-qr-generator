@@ -14,9 +14,7 @@ import { version } from '../package.json';
  */
 export function startServer(config: ServerConfig) {
   // Log startup information
-  console.error(
-    `Enhanced MCP QR Generator v${version} starting...`
-  );
+  console.error(`Enhanced MCP QR Generator v${version} starting...`);
   console.error(`Configuration:`);
   console.error(`  Default Error Correction Level: ${config.defaultErrorCorrectionLevel}`);
   console.error(`  Default Format: ${config.defaultFormat}`);
