@@ -3,6 +3,7 @@
  */
 
 import http from 'http';
+import { version } from '../package.json';
 
 /**
  * Simple health check endpoint handler
@@ -13,7 +14,7 @@ export function healthHandler(_req: http.IncomingMessage, res: http.ServerRespon
   const healthStatus = {
     status: 'ok',
     timestamp: new Date().toISOString(),
-    version: process.env.npm_package_version || '1.0.0',
+    version: version,
     uptime: process.uptime()
   };
 

@@ -26,6 +26,7 @@ RUN npm ci --omit=dev --ignore-scripts
 
 # Copy built application
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/package.json ./package.json
 
 # Set environment variables
 ENV NODE_ENV=production

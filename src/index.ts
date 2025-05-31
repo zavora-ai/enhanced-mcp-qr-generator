@@ -7,6 +7,7 @@
 
 import { ServerConfig, parseCommandLineArgs, loadConfig } from './config';
 import { McpServer } from './mcp/server';
+import { version } from '../package.json';
 
 /**
  * Initialize and start the MCP QR Generator
@@ -14,7 +15,7 @@ import { McpServer } from './mcp/server';
 export function startServer(config: ServerConfig) {
   // Log startup information
   console.error(
-    `Enhanced MCP QR Generator v${process.env.npm_package_version || '1.0.0'} starting...`
+    `Enhanced MCP QR Generator v${version} starting...`
   );
   console.error(`Configuration:`);
   console.error(`  Default Error Correction Level: ${config.defaultErrorCorrectionLevel}`);
