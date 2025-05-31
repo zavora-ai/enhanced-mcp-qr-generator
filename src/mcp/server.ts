@@ -422,6 +422,20 @@ export class McpServer {
     try {
       // Create HTTP server to handle requests
       this.httpServer = http.createServer(async (req, res) => {
+        // --------------------------------------------------
+        // 1. JSON-RPC tool calls (POST)
+        // 2. Lightweight health probe (GET /health)
+        //    Any other request → 405/404
+        // --------------------------------------------------
+
+        if (req.method === 'GET' && req.url === '/health') {
+          // Re-use shared health handler so behaviour matches pre-existing
+          // stand-alone health server.
+          const { healthHandler } = await import('../health');
+          healthHandler(req, res);
+          return;
+        }
+
         if (req.method === 'POST') {
           let body = '';
           req.on('data', chunk => {
@@ -452,14 +466,15 @@ export class McpServer {
             }
           });
         } else {
-          res.writeHead(405, { 'Content-Type': 'application/json' });
+          // Non-supported route/method
+          res.writeHead(404, { 'Content-Type': 'application/json' });
           res.end(
             JSON.stringify({
               jsonrpc: '2.0',
               id: null,
               error: {
-                code: -32600,
-                message: 'Method not allowed'
+                code: -32601,
+                message: 'Not found'
               }
             })
           );

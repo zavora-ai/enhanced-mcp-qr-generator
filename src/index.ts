@@ -7,8 +7,6 @@
 
 import { ServerConfig, parseCommandLineArgs, loadConfig } from './config';
 import { McpServer } from './mcp/server';
-import http from 'http';
-import { healthHandler } from './health';
 
 /**
  * Initialize and start the MCP QR Generator
@@ -34,33 +32,18 @@ export function startServer(config: ServerConfig) {
     process.exit(1);
   });
 
-  // Create health check server
-  const healthServer = http.createServer((req, res) => {
-    if (req.url === '/health') {
-      healthHandler(req, res);
-    } else {
-      res.writeHead(404);
-      res.end('Not found');
-    }
-  });
-
-  // Start health check server
-  healthServer.listen(9999, () => {
-    console.error('Health check endpoint available at http://localhost:9999/health');
-  });
+  console.error(`Health check endpoint available at http://${config.host}:${config.port}/health`);
 
   // Handle process termination
   process.on('SIGINT', async () => {
     console.error('Received SIGINT. Shutting down...');
     await server.stop();
-    healthServer.close();
     process.exit(0);
   });
 
   process.on('SIGTERM', async () => {
     console.error('Received SIGTERM. Shutting down...');
     await server.stop();
-    healthServer.close();
     process.exit(0);
   });
 }

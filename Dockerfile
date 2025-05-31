@@ -36,7 +36,7 @@ EXPOSE 9999
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD wget -qO- http://localhost:9999/health || exit 1
+  CMD wget -qO- "http://localhost:${PORT:-3333}/health" || exit 1
 
 # Start the server
 CMD ["node", "dist/index.js"]
