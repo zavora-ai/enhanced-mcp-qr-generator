@@ -29,7 +29,7 @@ export class McpServer {
     this.config = config;
     this.mcpServer = new ModelContextProtocolServer({
       name: "Enhanced MCP QR Generator",
-      version: "2.1.2"
+      version: "3.0.0"
     });
     
     // Initialize logger

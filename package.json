@@ -1,6 +1,6 @@
 {
   "name": "enhanced-mcp-qr-generator",
-  "version": "2.1.2",
+  "version": "3.0.0",
   "description": "MCP server for generating QR codes from URLs and text",
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
