@@ -30,14 +30,15 @@ COPY --from=builder /app/package.json ./package.json
 
 # Set environment variables
 ENV NODE_ENV=production
+# Use the default port from config.ts
 ENV PORT=9999
 
 # Expose port
 EXPOSE 9999
 
-# Health check
+# Health check - use the same port as the application
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD wget -qO- "http://localhost:${PORT:-3333}/health" || exit 1
+  CMD wget -qO- "http://localhost:${PORT:-9999}/health" || exit 1
 
 # Start the server
-CMD ["node", "dist/index.js"]
+CMD ["node", "dist/src/index.js"]

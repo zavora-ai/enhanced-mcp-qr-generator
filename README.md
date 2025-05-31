@@ -23,40 +23,34 @@ Developed by [James Karanja](https://www.zavora.ai) at Zavora AI.
 npm install enhanced-mcp-qr-generator
 ```
 
-## Quick Start
+## Server Architecture
 
-### As a Library
+The Enhanced MCP QR Generator uses a single HTTP server that handles:
 
-```typescript
-import { generateQR, saveQRToFile } from 'enhanced-mcp-qr-generator';
+1. **JSON-RPC Requests**: For MCP protocol communication
+2. **Health Check Endpoint**: Available at `/health` for monitoring
 
-// Generate a simple QR code
-const qrCode = await generateQR('https://example.com');
-console.log(qrCode.data); // Base64 encoded PNG
+### Port Configuration
 
-// Generate a customized QR code
-const customQR = await generateQR('https://example.com', {
-  format: 'svg',
-  size: 500,
-  margin: 2,
-  errorCorrectionLevel: 'H',
-  color: '#0000ff',
-  backgroundColor: '#ffffff'
-});
+The server uses port 9999 by default. You can change this by:
 
-// Save QR code to file
-await saveQRToFile(customQR, '/path/to/qrcode.svg');
+1. Setting the `PORT` environment variable
+2. When using Docker, updating the `PORT` environment variable in docker-compose.yml
+3. When using Docker, updating the port mapping in docker-compose.yml
 
-// Generate QR code with logo
-const qrWithLogo = await generateQR('https://example.com', {
-  format: 'png',
-  size: 500,
-  logo: {
-    image: 'https://example.com/logo.png',
-    size: 20 // 20% of QR code size
-  }
-});
+Example:
+```bash
+# Run with a custom port
+PORT=8080 npx enhanced-mcp-qr-generator
 ```
+
+### Configuration Precedence
+
+Configuration values are determined in the following order (highest priority first):
+
+1. Command line arguments
+2. Environment variables
+3. Default values from config.ts
 
 ### As an MCP Server
 

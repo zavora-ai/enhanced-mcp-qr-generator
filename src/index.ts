@@ -16,6 +16,7 @@ export function startServer(config: ServerConfig) {
   // Log startup information
   console.error(`Enhanced MCP QR Generator v${version} starting...`);
   console.error(`Configuration:`);
+  console.error(`  Server Address: http://${config.host}:${config.port}`);
   console.error(`  Default Error Correction Level: ${config.defaultErrorCorrectionLevel}`);
   console.error(`  Default Format: ${config.defaultFormat}`);
   console.error(`  Default Size: ${config.defaultSize}px`);

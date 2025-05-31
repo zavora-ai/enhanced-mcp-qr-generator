@@ -484,6 +484,15 @@ export class McpServer {
       // Start the HTTP server
       this.httpServer.listen(this.config.port, this.config.host, () => {
         console.error(`MCP Server started on http://${this.config.host}:${this.config.port}`);
+      }).on('error', (error: NodeJS.ErrnoException) => {
+        if (error.code === 'EADDRINUSE') {
+          console.error(`Error: Port ${this.config.port} is already in use.`);
+          console.error('Please choose a different port by setting the PORT environment variable.');
+          process.exit(1);
+        } else {
+          console.error('Server failed to start:', error);
+          throw error;
+        }
       });
 
       // Start the MCP server

@@ -11,6 +11,7 @@ services:
       - "9999:9999"
     environment:
       - NODE_ENV=production
+      # Use the default port from config.ts
       - PORT=9999
       - DEFAULT_ERROR_CORRECTION_LEVEL=M
       - DEFAULT_FORMAT=png
@@ -24,6 +25,7 @@ services:
       - ./output:/app/output
     restart: unless-stopped
     healthcheck:
+      # Use the same port as the application
       test: ["CMD", "wget", "-qO-", "http://localhost:9999/health"]
       interval: 30s
       timeout: 10s

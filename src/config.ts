@@ -34,10 +34,17 @@ export interface ServerConfig {
 
 /**
  * Default server configuration
+ * 
+ * NOTE: These are the default values that can be overridden by environment variables.
+ * The port value (DEFAULT_PORT) is the single source of truth for the application.
  */
+// Define constants for default values to ensure consistency
+export const DEFAULT_PORT = 9999;
+export const DEFAULT_HOST = 'localhost';
+
 export const defaultConfig: ServerConfig = {
-  port: 9999,
-  host: 'localhost',
+  port: DEFAULT_PORT,
+  host: DEFAULT_HOST,
   maxConcurrentRequests: 10,
   defaultErrorCorrectionLevel: 'M',
   defaultFormat: 'png',
@@ -104,6 +111,18 @@ function getArgValue(args: string[], argName: string): string | undefined {
 }
 
 /**
+ * Validates port number to ensure it's within valid range
+ * @param port Port number to validate
+ * @returns Valid port number or throws error
+ */
+function validatePort(port: number): number {
+  if (isNaN(port) || port < 1 || port > 65535) {
+    throw new Error(`Invalid port number: ${port}. Port must be between 1 and 65535.`);
+  }
+  return port;
+}
+
+/**
  * Load configuration from environment variables or config file
  */
 export function loadConfig(args?: CommandLineArgs): ServerConfig {
@@ -111,7 +130,15 @@ export function loadConfig(args?: CommandLineArgs): ServerConfig {
   const config = { ...defaultConfig };
 
   // Override with environment variables if present
-  if (process.env.PORT) config.port = parseInt(process.env.PORT, 10);
+  if (process.env.PORT) {
+    try {
+      config.port = validatePort(parseInt(process.env.PORT, 10));
+    } catch (error) {
+      console.error(`Error: ${error.message}`);
+      console.error(`Using default port ${DEFAULT_PORT} instead.`);
+    }
+  }
+  
   if (process.env.HOST) config.host = process.env.HOST;
   if (process.env.MAX_CONCURRENT_REQUESTS)
     config.maxConcurrentRequests = parseInt(process.env.MAX_CONCURRENT_REQUESTS, 10);
