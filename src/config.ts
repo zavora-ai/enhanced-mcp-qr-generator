@@ -133,7 +133,8 @@ export function loadConfig(args?: CommandLineArgs): ServerConfig {
   if (process.env.PORT) {
     try {
       config.port = validatePort(parseInt(process.env.PORT, 10));
-    } catch (error) {
+    } catch (err) {
+      const error = err as Error;
       console.error(`Error: ${error.message}`);
       console.error(`Using default port ${DEFAULT_PORT} instead.`);
     }

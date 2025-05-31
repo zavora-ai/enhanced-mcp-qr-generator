@@ -7,7 +7,7 @@ import { generateQR, saveQRToFile } from '../tools/generateQR';
 import * as os from 'os';
 import * as path from 'path';
 import * as http from 'http';
-import { McpServer, ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { McpServer as ModelContextProtocolServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
 /**
@@ -24,7 +24,7 @@ export class McpServer {
    */
   constructor(config: ServerConfig) {
     this.config = config;
-    this.mcpServer = new McpServer({
+    this.mcpServer = new ModelContextProtocolServer({
       name: "Enhanced MCP QR Generator",
       version: "2.1.2"
     });
