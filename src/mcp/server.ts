@@ -37,6 +37,19 @@ export class McpServer {
 
     // Register tools
     this.registerTools();
+    
+    // Add getters for tools and resources
+    Object.defineProperty(this.mcpServer, 'tools', {
+      get() {
+        return Object.values(this._registeredTools || {});
+      }
+    });
+
+    Object.defineProperty(this.mcpServer, 'resources', {
+      get() {
+        return Object.values(this._registeredResources || {});
+      }
+    });
   }
 
   /**
@@ -49,15 +62,15 @@ export class McpServer {
     this.mcpServer.tool(
       'generate_qr',
       {
-        text: z.string().min(1, "Text or URL is required"),
-        errorCorrectionLevel: z.enum(['L', 'M', 'Q', 'H']).optional(),
-        format: z.enum(['png', 'svg', 'base64', 'terminal']).optional(),
-        size: z.number().min(10).max(this.config.maxQRCodeSize).optional(),
-        margin: z.number().min(0).max(10).optional(),
-        color: z.string().optional(),
-        backgroundColor: z.string().optional(),
-        logo: z.string().optional(),
-        logoSize: z.number().min(1).max(100).optional()
+        text: { type: 'string', description: 'Text or URL to encode in the QR code' },
+        errorCorrectionLevel: { type: 'string', enum: ['L', 'M', 'Q', 'H'], description: 'Error correction level' },
+        format: { type: 'string', enum: ['png', 'svg', 'base64', 'terminal'], description: 'Output format' },
+        size: { type: 'number', description: 'Size of QR code in pixels' },
+        margin: { type: 'number', description: 'Margin around the QR code in modules' },
+        color: { type: 'string', description: 'Color of the QR code (dark modules)' },
+        backgroundColor: { type: 'string', description: 'Background color of the QR code (light modules)' },
+        logo: { type: 'string', description: 'URL or base64 encoded image for logo' },
+        logoSize: { type: 'number', description: 'Size of logo as percentage of QR code' }
       },
       async (params: any) => {
         try {
@@ -124,16 +137,16 @@ export class McpServer {
     this.mcpServer.tool(
       'save_qr',
       {
-        text: z.string().min(1, "Text or URL is required"),
-        outputPath: z.string().min(1, "Output path is required"),
-        errorCorrectionLevel: z.enum(['L', 'M', 'Q', 'H']).optional(),
-        format: z.enum(['png', 'svg', 'base64', 'terminal']).optional(),
-        size: z.number().min(10).max(this.config.maxQRCodeSize).optional(),
-        margin: z.number().min(0).max(10).optional(),
-        color: z.string().optional(),
-        backgroundColor: z.string().optional(),
-        logo: z.string().optional(),
-        logoSize: z.number().min(1).max(100).optional()
+        text: { type: 'string', description: 'Text or URL to encode in the QR code' },
+        outputPath: { type: 'string', description: 'Output file path' },
+        errorCorrectionLevel: { type: 'string', enum: ['L', 'M', 'Q', 'H'], description: 'Error correction level' },
+        format: { type: 'string', enum: ['png', 'svg', 'base64', 'terminal'], description: 'Output format' },
+        size: { type: 'number', description: 'Size of QR code in pixels' },
+        margin: { type: 'number', description: 'Margin around the QR code in modules' },
+        color: { type: 'string', description: 'Color of the QR code (dark modules)' },
+        backgroundColor: { type: 'string', description: 'Background color of the QR code (light modules)' },
+        logo: { type: 'string', description: 'URL or base64 encoded image for logo' },
+        logoSize: { type: 'number', description: 'Size of logo as percentage of QR code' }
       },
       async (params: any) => {
         try {
@@ -191,7 +204,7 @@ export class McpServer {
     this.mcpServer.resource(
       'documentation',
       'qr-docs://guide',
-      async (uri) => ({
+      async (uri: URL) => ({
         contents: [{
           uri: uri.href,
           text: `
@@ -346,7 +359,7 @@ Parameters:
 
                 try {
                   // Call the tool
-                  const result = await tool.handler(args);
+                  const result = await tool.callback(args);
                   
                   // Return the result
                   res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -390,9 +403,9 @@ Parameters:
                   id: request.id,
                   result: {
                     tools: this.mcpServer.tools ? this.mcpServer.tools.map((tool: any) => ({
-                      name: tool.name,
-                      description: tool.description,
-                      inputSchema: tool.paramSchema
+                      name: tool.name || '',
+                      description: tool.description || '',
+                      inputSchema: tool.annotations || {}
                     })) : []
                   }
                 }));
@@ -412,8 +425,8 @@ Parameters:
                   id: request.id,
                   result: {
                     resources: this.mcpServer.resources ? this.mcpServer.resources.map((resource: any) => ({
-                      name: resource.name,
-                      uriTemplate: resource.uriTemplate
+                      name: resource.name || '',
+                      uriTemplate: resource.uriTemplate || ''
                     })) : []
                   }
                 }));
@@ -432,7 +445,7 @@ Parameters:
                 // Find the resource
                 const resource = this.mcpServer && this.mcpServer.resources ? 
                   this.mcpServer.resources.find((r: any) => 
-                    uri.startsWith(r.uriTemplate.split('{')[0])
+                    uri && r.uriTemplate && uri.startsWith(r.uriTemplate.split('{')[0])
                   ) : null;
                 
                 if (!resource) {
@@ -457,7 +470,7 @@ Parameters:
 
                 try {
                   // Call the resource handler
-                  const result = await resource.handler(new URL(uri), {});
+                  const result = await resource.readCallback(new URL(uri), {});
                   
                   // Return the result
                   res.writeHead(200, { 'Content-Type': 'application/json' });
