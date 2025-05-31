@@ -32,4 +32,30 @@ fs.writeFileSync(
   JSON.stringify(packageJson, null, 2) + '\n'
 );
 
+// ------------------------------------------------------------
+// Keep package-lock.json in sync so that CI and publishing are
+// reproducible and the lockfile version matches package.json.
+// We update:
+//   1. Top-level "version" field
+//   2. packages[""].version (npm v7+ lockfile v2/3)
+// ------------------------------------------------------------
+
+const lockPath = path.join(__dirname, '../package-lock.json');
+try {
+  if (fs.existsSync(lockPath)) {
+    const lockRaw = fs.readFileSync(lockPath, 'utf8');
+    const lockJson = JSON.parse(lockRaw);
+
+    lockJson.version = newVersion;
+
+    if (lockJson.packages && lockJson.packages['']) {
+      lockJson.packages[''].version = newVersion;
+    }
+
+    fs.writeFileSync(lockPath, JSON.stringify(lockJson, null, 2) + '\n');
+  }
+} catch (err) {
+  console.warn('Warning: failed to update package-lock.json version', err);
+}
+
 console.log(`Version updated to ${newVersion}`);

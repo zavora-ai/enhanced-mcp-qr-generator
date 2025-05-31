@@ -30,7 +30,9 @@ jobs:
   build-and-push:
     needs: test
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' || github.event_name == 'release'
+    # Build/push images only for official releases. Avoid re-building on the
+    # follow-up commit created by the release workflow.
+    if: github.event_name == 'release'
     steps:
       - uses: actions/checkout@v3
       

@@ -29,6 +29,11 @@ jobs:
       - name: Update version
         run: node scripts/version.js ${{ github.event.inputs.version }}
 
+      # Ensure package-lock.json is re-generated so its metadata such as
+      # integrity hashes stay consistent with the bumped version.
+      - name: Regenerate lockfile
+        run: npm install --package-lock-only --ignore-scripts
+
       # Extract the new version for later steps
       - name: Extract version
         id: extract_version
@@ -68,7 +73,9 @@ jobs:
         uses: ad-m/github-push-action@master
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          branch: ${{ github.ref }}
+          # github.ref is a full ref (refs/heads/main). The action expects just
+          # the branch name.
+          branch: ${{ github.ref_name }}
           tags: true
       
       - name: Create GitHub Release
