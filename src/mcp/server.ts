@@ -388,11 +388,11 @@ Parameters:
                   jsonrpc: '2.0',
                   id: request.id,
                   result: {
-                    tools: this.mcpServer.tools.map((tool: any) => ({
+                    tools: this.mcpServer.tools ? this.mcpServer.tools.map((tool: any) => ({
                       name: tool.name,
                       description: tool.description,
                       inputSchema: tool.paramSchema
-                    }))
+                    })) : []
                   }
                 }));
                 
@@ -410,10 +410,10 @@ Parameters:
                   jsonrpc: '2.0',
                   id: request.id,
                   result: {
-                    resources: this.mcpServer.resources.map((resource: any) => ({
+                    resources: this.mcpServer.resources ? this.mcpServer.resources.map((resource: any) => ({
                       name: resource.name,
                       uriTemplate: resource.uriTemplate
-                    }))
+                    })) : []
                   }
                 }));
                 
